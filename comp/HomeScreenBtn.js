@@ -95,7 +95,10 @@ export default class HomeScreenBtn extends React.Component {
 
     _onPress() {
         if (this.name === 'SosQ') {
-            this.nav.navigate('SosQuestions', { name: 'Jane' });
+            const previousScr = 'Home';
+            const previousScrGr = 'Αρχική';
+            const currScr = 'SosQuestions';
+            this.nav.navigate(currScr, { beforeScreen: previousScr, beforeScreenGr: previousScrGr });
         }
     }
 

@@ -12,7 +12,6 @@ export default class InfoWindow extends React.Component {
         this.state = {
             isOpen: props.status,
             isFocus: false,
-
             fadeAnim: new Animated.Value(0),
         };
 
