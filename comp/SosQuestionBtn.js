@@ -1,10 +1,12 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableHighlight, Image, Animated, Alert } from 'react-native';
+import { StyleSheet, Text, View, Image, Animated, Alert, Pressable } from 'react-native';
 // import Animated, { withTiming, useSharedValue } from 'react-native-reanimated'
 import { AntDesign, FontAwesome, Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 
+import chooseImg from '../comp/chooseImg'
+import { RightAnswer, WrongAnswer } from './Answers';
 
-export default class QuestionBtn extends React.Component {
+export default class SosQuestionBtn extends React.Component {
     constructor(props) {
         super(props);
         this.nav = props.navigation;
@@ -14,7 +16,7 @@ export default class QuestionBtn extends React.Component {
         this.state = {
             isFocus: false,
             isOpened: false,
-            openAnim: new Animated.Value(-100),
+            openAnim: new Animated.Value(.3),
 
             isDeleted: false,
         };
@@ -56,7 +58,11 @@ export default class QuestionBtn extends React.Component {
     }
 
     _onPress() {
-        Animated.timing(this.state.openAnim, { toValue: this.state.isOpened ? -100 : 0, delay: 0, duration: 300, useNativeDriver: true }).start();
+        Animated.timing(this.state.openAnim, { toValue: this.state.isOpened ? 0 : 1, delay: 0, duration: 300, useNativeDriver: true }).start(({ finished }) => {
+            this.setState({
+                openAnim: new Animated.Value(.3)
+            })
+        });
 
         this.updateQuestionViewStatus();
     }
@@ -88,21 +94,42 @@ export default class QuestionBtn extends React.Component {
             return '';
         }
         else {
+            const imgPath = chooseImg(this.questionObj.img);
+            let idC = -1;
+
+            const answersRender = this.questionObj.answersAr.map(item => {
+                idC++;
+                if ((idC + 1) === this.questionObj.rightAnswIndex) {
+                    return (<RightAnswer key={this.questionObj.iD + idC + 'sosQuesAnswersText'} answer={item} answerCount={idC + 1} />);
+                }
+                else {
+                    return (<WrongAnswer key={this.questionObj.iD + idC + 'sosQuesAnswersText'} answer={item} answerCount={idC + 1} />);
+                }
+            }
+            );
+
+            const finalVal = this.state.openAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-250, 0],
+            });
+
             return (
-                <TouchableHighlight
-                    style={questionBtnStyles.btn}
-                    onPress={this._onPress}
-                    onLongPress={this._onLongPress}
-                    delayLongPress={700}
-                    onShowUnderlay={this._onFocus}
-                    onHideUnderlay={this._onBlur}
-                    underlayColor={'rgba(0, 0, 0, 0)'}
-                    key={this.questionObj.iD}>
-                    <View style={questionBtnStyles.btnContainer}>
+                <View style={[
+                    questionBtnStyles.btnContainer,
+                    this.state.isOpened ? { borderTopColor: 'rgb(165, 202, 230)', borderBottomColor: 'rgb(165, 202, 230)' } : { borderTopColor: 'rgb(45, 71, 89)', borderBottomColor: 'rgb(45, 71, 89)' },
+                ]}>
+                    <Pressable
+                        style={questionBtnStyles.btn}
+                        onPress={this._onPress}
+                        // onLongPress={this._onLongPress}
+                        // delayLongPress={700}
+                        onPressIn={this._onFocus}
+                        onPressOut={this._onBlur}
+                        key={this.questionObj.iD + 'sosQuestions'}>
                         <View style={[questionBtnStyles.btnUpSide, { backgroundColor: this.state.isFocus ? 'rgb(100, 100, 100)' : 'rgb(50, 50, 50)' }]}>
                             <View style={questionBtnStyles.btnUpSideInside}>
-                                <Image style={questionBtnStyles.btnImg} resizeMode='cover' source={require('../assets/PlaceImageHere.jpg')} />
-                                <Text numberOfLines={1} style={questionBtnStyles.btnText}>{this.temporaryID}) {this.questionObj.question}</Text>
+                                <Image style={questionBtnStyles.btnImg} resizeMode='cover' source={imgPath}></Image>
+                                <Text numberOfLines={1} style={questionBtnStyles.btnText}> {this.temporaryID}) {this.questionObj.question} (#ID:{this.questionObj.iD})</Text>
                             </View>
                             <View style={questionBtnStyles.btnOpenCloseIndicator}>
                                 <AntDesign
@@ -113,32 +140,44 @@ export default class QuestionBtn extends React.Component {
                                 />
                             </View>
                         </View>
-                        <Animated.View style={[questionBtnStyles.btnDownSide, { translateY: this.state.openAnim },
-                        this.state.isOpened ? { height: 'auto' } : { height: 0 }]}>
-                            <Image style={questionBtnStyles.btnDownSidebtnImg} resizeMode='cover' source={require('../assets/PlaceImageHere.jpg')} />
-                            <View style={questionBtnStyles.btnDownSideWholeParText}>
-                                <Text style={questionBtnStyles.btnDownSidebtnText}>{this.temporaryID}) {this.questionObj.question}</Text>
-                            </View>
-                        </Animated.View>
-                    </View>
-                </TouchableHighlight >
+                    </Pressable >
+                    {
+                        this.state.isOpened ?
+                            <Animated.View style={[
+                                questionBtnStyles.btnDownSide,
+                                { translateY: finalVal },
+                                this.state.isOpened ? { height: 'auto' } : { height: 0 }
+                            ]}>
+                                <Image style={questionBtnStyles.btnDownSidebtnImg} resizeMode='cover' source={imgPath} />
+                                <View style={questionBtnStyles.btnDownSideWholeParText}>
+                                    <Text style={questionBtnStyles.btnDownSidebtnQuestionText}>{this.questionObj.question}</Text>
+                                    <View style={questionBtnStyles.btnDownSidebtnAnswers}>
+                                        {answersRender}
+                                    </View>
+                                </View>
+                            </Animated.View> :
+                            null
+                    }
+                </View >
             );
         }
     }
 }
 
 const questionBtnStyles = StyleSheet.create({
+    btnContainer: {
+        flex: 1,
+        flexDirection: 'column',
+        overflow: 'hidden',
+        borderTopWidth: 1, borderBottomWidth: 2,
+        marginHorizontal: 0
+    },
     btn: {
         flex: 1,
         borderTopLeftRadius: 0,
         borderTopRightRadius: 0,
         overflow: 'hidden',
-        marginBottom: 2, marginHorizontal: 0
-    },
-    btnContainer: {
-        flex: 1,
-        flexDirection: 'column',
-        marginHorizontal: 0
+        zIndex: 100,
     },
 
     btnUpSide: {
@@ -179,16 +218,28 @@ const questionBtnStyles = StyleSheet.create({
         flex: 1,
         flexDirection: 'column',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 61, 102, 0.5)',
+        backgroundColor: 'rgb(59, 80, 94)',
         zIndex: 1
     },
     btnDownSidebtnImg: {
         width: 100, height: 100,
-        marginVertical: 10
+        marginTop: 10, marginBottom: 5,
     },
     btnDownSideWholeParText: {
-        marginVertical: 10
+        width: '90%',
+        marginBottom: 10,
     },
-    btnDownSidebtnText: {
+    btnDownSidebtnQuestionText: {
+        flex: 1,
+        color: 'white',
+        fontSize: 19,
+        textAlign: 'center',
+    },
+    btnDownSidebtnAnswers: {
+        flex: 1,
+        width: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 2,
     }
 });

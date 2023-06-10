@@ -1,25 +1,39 @@
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { StyleSheet, Text, View, SafeAreaView, Platform, RefreshControl, ScrollView, ImageBackground, FlatList, Button, TouchableHighlight } from 'react-native';
+import {
+    StyleSheet, Text, View, SafeAreaView, Platform, RefreshControl, KeyboardAvoidingView, ScrollView, ImageBackground, FlatList, Button,
+    Pressable, TextInput, Alert
+} from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 import { AntDesign, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 
 import HomeScreenBtn from '../../comp/HomeScreenBtn';
 import InfoWindow from '../../comp/InfoWindow';
+import { Loader } from '../../comp/Loader';
+import Test from '../../comp/Test'
 
 
 export default class HomeScreen extends React.Component {
     constructor(props) {
         super(props);
+        this.premiumAccount = props.premiumAccount;
         this.forNavigation = this.props.navigation;
         this.state = {
+            refreshing: false,
             optionValue: null,
             isDropdownFocus: false,
-            isBtnFocus: false
+            isBtnFocus: false,
+            isLoading: false,
         }
         this.options = [];
 
         this.titleOfApp = 'ΕΣΤΙΑΤΟΡΑΣ';
+
+        this.updateRefresh = this.updateRefresh.bind(this);
+        this.updateLoading = this.updateLoading.bind(this);
+
+        // DATABASE COMMUNICATION
+        this.questionsFromJson = require('./JSONDB/questions.json');
 
         //DROPDOWN LIST
         this._onDropdownFocus = this._onDropdownFocus.bind(this);
@@ -28,8 +42,30 @@ export default class HomeScreen extends React.Component {
         this.updateFocus = this.updateFocus.bind(this);
 
         // CHOOSE TEST BUTTON
+        this._onRefresh = this._onRefresh.bind(this);
         this._onBtnFocus = this._onBtnFocus.bind(this);
         this._onBtnBlur = this._onBtnBlur.bind(this);
+        this._pickedTest = this._pickedTest.bind(this);
+    }
+
+    updateRefresh() {
+        this.setState({
+            refreshing: !this.state.refreshing,
+        })
+    }
+
+    updateLoading() {
+        this.setState({
+            isLoading: !this.state.isLoading
+        });
+    }
+
+    _onRefresh() {
+        this.updateRefresh();
+        setTimeout(() => {
+            this.updateRefresh();
+            this.forNavigation.navigate('Home');
+        }, 100);
     }
 
     _onDropdownFocus() {
@@ -73,20 +109,53 @@ export default class HomeScreen extends React.Component {
     }
 
     _pickedTest() {
+        const currScr = 'TestQuestions';
 
+        const chosenNoOfTest = this.state.optionValue;
+        const chosenTestList = this.questionsFromJson.tests.filter(item =>
+            item.no === chosenNoOfTest
+        )[0];
+
+        console.log(chosenTestList);
+        const chosenTestObj = chosenTestList.list.map(id =>
+            this.questionsFromJson.questions.filter(test => id === test.id)[0]
+        );
+
+        // Alert.alert(
+        //     '', 'Είσαι έτοιμος για το ΤΕΣΤ;',
+        //     [
+        //         {
+        //             text: "ΟΧΙ",
+        //             style: 'cancel',
+        //             onPress: () => { }
+        //         },
+        //         {
+        //             text: 'ΕΤΟΙΜΟΣ',
+        //             style: 'default',
+        //             // If the user confirmed, then we dispatch the action we blocked earlier
+        //             // This will continue the action that had triggered the removal of the screen
+        //             onPress: () => {
+        this.forNavigation.navigate(currScr, { testObj: chosenTestObj, });
+        //             }
+        //         },
+        //     ],
+        // );
     }
 
     componentDidMount() {
         // OPTIONS FOR DROPDOWNLIST 
-        const Test = (msg) => {
-            return msg;
-        }
-        const tests = [Test('Test 1'), Test('Test 2'), Test('Test 3'), Test('Test 4')];
-        tests.map((test) => {
-            this.options.push({ label: test, value: test });
+        this.questionsFromJson.tests.map((test) => {
+            const testObj = new Test(test.no, test.list);
+            this.options.push({ label: testObj.getLabelOfTest(), value: testObj.getNumberOfTest() });
         });
 
         this.updateOptionValue(this.options[0].value);
+
+        // // INFO WINDOW
+        // const focusHandler = this.forNavigation.addListener('focus', () => {
+
+        // });
+        // return focusHandler;
     }
 
     render() {
@@ -101,7 +170,7 @@ export default class HomeScreen extends React.Component {
             },
             {
                 id: 'aaa-001',
-                name: 'StoreQ',
+                name: 'StoredQ',
                 title: 'ΑΠΟΘΗΚΗ ΓΝΩΣΕΩΝ',
                 type: 'matI',
                 iconName: 'sd-storage'
@@ -146,90 +215,118 @@ export default class HomeScreen extends React.Component {
         };
 
         return (
-            <SafeAreaView style={[styles.container]}>
-                {/* HEADER */}
-                <View style={basicStyles.header}>
-                    <Text style={basicStyles.topBar}>{this.titleOfApp}</Text>
-                </View>
+            <SafeAreaView style={styles.container} >
 
-                {/* BODDY */}
-                <ImageBackground source={require('../../assets/AI/Bing1-Resz.jpg')} resizeMode="cover" style={styles.imgBackground}>
-                    <View style={styles.wholeScreen} >
-                        <View style={styles.mainContainer}>
-                            <View style={styles.firstMainPart}>
-                                <View style={styles.dropdownListLine}>
-                                    <Text style={styles.dropdownListTestSide}>Επίλεξε ΤΕΣΤ:</Text>
-                                    <Dropdown style={[styles.dropdownList, this.state.isDropdownFocus && { borderColor: 'black', borderWidth: 2 }]}
-                                        containerStyle={styles.dropdownListContainer}
-                                        placeholderStyle={extraStyles.placeholderStyle}
-                                        selectedTextStyle={[extraStyles.selectedTextStyle, this.state.isDropdownFocus && { color: 'grey' }]}
-                                        inputSearchStyle={extraStyles.inputSearchStyle}
-                                        iconStyle={extraStyles.iconStyle}
-                                        data={this.options}
-                                        search
-                                        maxHeight={300}
-                                        labelField="label"
-                                        valueField="value"
-                                        value={this.state.optionValue}
-                                        placeholder=''
-                                        searchPlaceholder="Αναζήτηση..."
-                                        onFocus={this._onDropdownFocus}
-                                        onBlur={this._onDropdownBlur}
-                                        onChange={item => {
-                                            this.updateOptionValue(item.value);
-                                            this.updateFocus(false);
-                                        }}
-                                        renderLeftIcon={() => (
-                                            <MaterialCommunityIcons
-                                                style={extraStyles.icon}
-                                                color={this.state.isDropdownFocus ? 'black' : 'grey'}
-                                                name="ab-testing"
-                                                size={20}
-                                            />
-                                        )}
-                                        itemContainerStyle={extraStyles.itemsInDropdownListContainer}
-                                        itemTextStyle={extraStyles.itemsInDropdownList}
-                                    />
-                                    <TouchableHighlight
-                                        onPress={this._pickedTest}
-                                        onShowUnderlay={this._onBtnFocus}
-                                        onHideUnderlay={this._onBtnBlur}
-                                        underlayColor='black'
-                                        style={styles.dropdownListBtnChoose}>
-                                        <View style={styles.dropdownListBtnView}>
-                                            <AntDesign
-                                                style={styles.dropdownListBtnImg}
-                                                color={this.state.isBtnFocus ? 'rgb(0, 138, 230)' : 'white'}
-                                                name="caretright"
-                                                size={30}
-                                            />
+                <KeyboardAvoidingView
+                    style={styles.container}
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    enabled={false}
+                >
+                    <ScrollView
+                        contentContainerStyle={{ flex: 1 }}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={this.state.refreshing}
+                                onRefresh={this._onRefresh}
+                            />
+                        }
+
+                    >
+
+                        <View style={styles.container}>
+                            {
+                                this.state.isLoading ?
+                                    <View style={{ position: 'absolute', width: '100%', height: '100%', backgroundColor: 'transparent', zIndex: 100000 }}>
+                                        <Loader />
+                                    </View> :
+                                    null
+                            }
+
+                            {/* BODDY */}
+                            <ImageBackground source={require('../../assets/AI/Bing1-ReszAndFadeTop.jpg')} resizeMode="cover" style={styles.imgBackground}>
+                                <View style={styles.wholeScreen} >
+                                    <View style={styles.mainContainer}>
+                                        <View style={styles.firstMainPart}>
+                                            <View style={styles.dropdownListLine}>
+                                                <Text style={styles.dropdownListTestSide}>Επίλεξε ΤΕΣΤ:</Text>
+                                                <Dropdown style={[styles.dropdownList, this.state.isDropdownFocus && { borderColor: 'black', borderWidth: 2 }]}
+                                                    containerStyle={styles.dropdownListContainer}
+                                                    placeholderStyle={extraStyles.placeholderStyle}
+                                                    selectedTextStyle={[extraStyles.selectedTextStyle, this.state.isDropdownFocus && { color: 'grey' }]}
+                                                    inputSearchStyle={extraStyles.inputSearchStyle}
+                                                    iconStyle={extraStyles.iconStyle}
+                                                    data={this.options}
+                                                    search
+                                                    maxHeight={300}
+                                                    labelField="label"
+                                                    valueField="value"
+                                                    value={this.state.optionValue}
+                                                    placeholder=''
+                                                    searchPlaceholder="Αναζήτηση..."
+                                                    onFocus={this._onDropdownFocus}
+                                                    onBlur={this._onDropdownBlur}
+                                                    onChange={item => {
+                                                        this.updateOptionValue(item.value);
+                                                        this.updateFocus(false);
+                                                    }}
+                                                    renderLeftIcon={() => (
+                                                        <MaterialCommunityIcons
+                                                            style={extraStyles.icon}
+                                                            color={this.state.isDropdownFocus ? 'black' : 'grey'}
+                                                            name="ab-testing"
+                                                            size={20}
+                                                        />
+                                                    )}
+                                                    itemContainerStyle={extraStyles.itemsInDropdownListContainer}
+                                                    itemTextStyle={extraStyles.itemsInDropdownList}
+                                                />
+                                                <Pressable
+                                                    onPress={this._pickedTest}
+                                                    onPressIn={this._onBtnFocus}
+                                                    onPressOut={this._onBtnBlur}
+                                                    style={[
+                                                        styles.dropdownListBtnChoose,
+                                                        this.state.isBtnFocus ? { backgroundColor: 'black' } : { backgroundColor: 'rgb(0, 46, 77)' }
+                                                    ]} >
+                                                    <View style={styles.dropdownListBtnView}>
+                                                        <AntDesign
+                                                            style={styles.dropdownListBtnImg}
+                                                            color={this.state.isBtnFocus ? 'rgb(0, 138, 230)' : 'white'}
+                                                            name="caretright"
+                                                            size={30}
+                                                        />
+                                                    </View>
+                                                </Pressable>
+                                            </View>
+                                            <ImageBackground source={require('../../assets/AI/Bing7.jpg')} resizeMode="cover" style={styles.imgLandscapeBackground}></ImageBackground>
                                         </View>
-                                    </TouchableHighlight>
-                                </View>
-                                <ImageBackground source={require('../../assets/AI/Bing7.jpg')} resizeMode="cover" style={styles.imgLandscapeBackground}></ImageBackground>
-                            </View>
-                            <View style={styles.secondMainPart}>
-                                <InfoWindow msg={msgOfWindow} animation={animForInfoWind} status={true} />
-                                <View style={styles.btnsContainer}>
-                                    <View style={styles.btnsContainerLeft}>
-                                        <HomeScreenBtn style={{ height: 100 }} item={dataLeft[0]} nav={this.forNavigation} />
-                                        <HomeScreenBtn style={{ height: 100 }} item={dataLeft[1]} nav={this.forNavigation} />
-                                        <HomeScreenBtn style={{ height: 100 }} item={dataLeft[2]} nav={this.forNavigation} />
+                                        <View style={styles.secondMainPart}>
+                                            <InfoWindow msg={msgOfWindow} animation={animForInfoWind} status={true} />
+                                            <View style={styles.btnsContainer}>
+                                                <View style={styles.btnsContainerLeft}>
+                                                    <HomeScreenBtn infoOfBtn={{ pos: 'left', num: 0 }} item={dataLeft[0]} nav={this.forNavigation} questionsFromJson={this.questionsFromJson} updateLoad={this.updateLoading} />
+                                                    <HomeScreenBtn infoOfBtn={{ pos: 'left', num: 1 }} item={dataLeft[1]} nav={this.forNavigation} questionsFromJson={this.questionsFromJson} updateLoad={this.updateLoading} />
+                                                    <HomeScreenBtn infoOfBtn={{ pos: 'left', num: 2 }} item={dataLeft[2]} nav={this.forNavigation} questionsFromJson={this.questionsFromJson} updateLoad={this.updateLoading} />
+                                                </View>
+                                                <View style={styles.btnsContainerMiddle}></View>
+                                                <View style={styles.btnsContainerRight}>
+                                                    <HomeScreenBtn infoOfBtn={{ pos: 'right', num: 0 }} item={dataRight[0]} nav={this.forNavigation} questionsFromJson={this.questionsFromJson} updateLoad={this.updateLoading} />
+                                                    <HomeScreenBtn infoOfBtn={{ pos: 'right', num: 1 }} item={dataRight[1]} nav={this.forNavigation} questionsFromJson={this.questionsFromJson} updateLoad={this.updateLoading} />
+                                                    <HomeScreenBtn infoOfBtn={{ pos: 'right', num: 2 }} item={dataRight[2]} nav={this.forNavigation} questionsFromJson={this.questionsFromJson} updateLoad={this.updateLoading} />
+                                                </View>
+                                            </View>
+                                        </View>
                                     </View>
-                                    <View style={styles.btnsContainerMiddle}></View>
-                                    <View style={styles.btnsContainerRight}>
-                                        <HomeScreenBtn style={{ height: 100 }} item={dataRight[0]} nav={this.forNavigation} />
-                                        <HomeScreenBtn style={{ height: 100 }} item={dataRight[1]} nav={this.forNavigation} />
-                                        <HomeScreenBtn style={{ height: 100 }} item={dataRight[2]} nav={this.forNavigation} />
-                                    </View>
                                 </View>
-                            </View>
+                            </ImageBackground>
+                            {/* FOOTER */}
+                            <View style={basicStyles.footer}></View>
                         </View>
-                    </View>
-                </ImageBackground>
 
-                {/* FOOTER */}
-                <View style={basicStyles.footer}></View>
+                    </ScrollView>
+
+                </KeyboardAvoidingView>
+
             </SafeAreaView >
         );
     }
@@ -238,7 +335,7 @@ export default class HomeScreen extends React.Component {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: 'white'
+        backgroundColor: 'white',
     },
     imgBackground: {
         flex: 1,
@@ -317,7 +414,6 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgb(0, 46, 77)',
         color: 'white',
         borderRadius: 3,
         overflow: 'hidden',
@@ -417,17 +513,6 @@ const extraStyles = StyleSheet.create({
 });
 
 const basicStyles = StyleSheet.create({
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(217, 217, 217, 0.9)',
-        borderBottomWidth: 1, borderBottomColor: 'grey',
-        paddingTop: 10, paddingBottom: 5
-    },
-    topBar: {
-        fontSize: 26
-    },
     footer: {
         flex: 0.02,
         flexDirection: 'row',
